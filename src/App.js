@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import GlobalStyle from './globalStyle';
 import Login from './components/Login';
+import Player from './components/Player';
 import { getTokenFromUrl } from './spotify';
 import SpotifyWebApi from 'spotify-web-api-js';
+import { useDataLayerValue } from "./DataLayer";
 
 const spotify = new SpotifyWebApi();
 
 const App = () => {
-  const [token, setToken] = useState();
+  const [{ token }, dispatch] = useDataLayerValue();
 
   useEffect(() => {
     const hash = getTokenFromUrl();
@@ -15,19 +17,36 @@ const App = () => {
     const _token = hash.access_token;
 
     if(_token) {
-      setToken(_token);
+      dispatch({
+        type: "SET_TOKEN",
+        token: _token,
+      });
       spotify.setAccessToken(_token);
-    } else {
-      const err = hash.error;
-      console.error(err);
-    }
-  }, [])
+      spotify.getMe().then(user => {
+        dispatch({
+          type: "SET_USER",
+          user,
+        });
+      });
+      spotify.getUserPlaylists().then(playlists => {
+        dispatch({
+          type: "SET_PLAYLISTS",
+          playlists,
+        });
+      });
+      // spotify.getPlaylist("37i9dQZF1E34Ucm14HHx1w").then(playlist => {
+      //   dispatch({
+      //     type: "SET_DISCOVER_WEEKLY",
+      //     discover_weekly: playlist,
+      //   });
+      // });
+    };
+  }, []);
 
-  console.log("token", token);
   return (
     <>
       <GlobalStyle />
-      {token ? <h1 style={{color:'#fff'}}>Logged in</h1> : <Login />}
+      {token ? <Player spotify={spotify} /> : <Login />}
     </>
   )
 }
